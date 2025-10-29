@@ -1,0 +1,70 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: mq-limit-demo
+    # Redis 配置
+  redis:
+    # Redis 服务器地址
+    host: 127.0.0.1
+    # Redis 服务器端口
+    port: 6379
+    # Redis 数据库索引（默认为0）
+    database: 0
+    # Redis 密码（如果没有密码则留空）
+    password:
+    # 连接超时时间（毫秒）
+    timeout: 3000
+    # Lettuce 连接池配置
+    lettuce:
+      pool:
+        # 连接池最大连接数
+        max-active: 8
+        # 连接池最大阻塞等待时间（毫秒）
+        max-wait: -1
+        # 连接池最大空闲连接
+        max-idle: 8
+        # 连接池最小空闲连接
+        min-idle: 0
+
+# RocketMQ 配置
+rocketmq:
+  # NameServer 地址
+  name-server: 127.0.0.1:9876
+  
+  # 生产者配置
+  producer:
+    # 生产者组名
+    group: demo-producer-group
+    # 发送消息超时时间，单位：毫秒
+    send-message-timeout: 3000
+    # 消息最大长度，单位：字节
+    max-message-size: 4194304
+    # 消息发送失败重试次数
+    retry-times-when-send-failed: 2
+    # 异步消息发送失败重试次数
+    retry-times-when-send-async-failed: 2
+  
+  # 消费者配置
+  consumer:
+    # 消费者组名
+    group: demo-consumer-group
+    # 消费模式：CLUSTERING（集群模式）或 BROADCASTING（广播模式）
+    message-model: CLUSTERING
+    # 消费类型：CONCURRENTLY（并发消费）或 ORDERLY（顺序消费）
+    consume-mode: CONCURRENTLY
+    # 最小消费线程数
+    consume-thread-min: 5
+    # 最大消费线程数
+    consume-thread-max: 20
+    # 每次批量拉取消息数量
+    pull-batch-size: 10
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.example.mqlimitdemo: DEBUG
+    org.apache.rocketmq: INFO
+
