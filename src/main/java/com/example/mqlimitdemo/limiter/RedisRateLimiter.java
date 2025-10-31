@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
  * 1. 滑动窗口算法（适合精确限流）
  * 2. 令牌桶算法（适合流量整形）
  * 3. 固定窗口算法（简单高效）
+ * 
+ * Lua 脚本位置：resources/lua/
  *
  * @author demo
  */
@@ -27,10 +29,17 @@ public class RedisRateLimiter {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    @Resource(name = "slidingWindowScript")
+    private RedisScript<Long> slidingWindowScript;
+
+    @Resource(name = "tokenBucketScript")
+    private RedisScript<Long> tokenBucketScript;
+
     /**
      * 滑动窗口限流算法（推荐）
      * 
      * 使用 Redis Sorted Set 实现，score 为时间戳
+     * Lua 脚本：resources/lua/sliding_window_rate_limit.lua
      * 
      * @param key          限流key
      * @param limit        限流次数
@@ -44,33 +53,9 @@ public class RedisRateLimiter {
         String redisKey = "rate_limit:sliding:" + key;
 
         try {
-            // Lua 脚本保证原子性
-            String luaScript = 
-                "local key = KEYS[1]\n" +
-                "local now = tonumber(ARGV[1])\n" +
-                "local windowStart = tonumber(ARGV[2])\n" +
-                "local limit = tonumber(ARGV[3])\n" +
-                "local windowSize = tonumber(ARGV[4])\n" +
-                "\n" +
-                "-- 移除窗口外的数据\n" +
-                "redis.call('zremrangebyscore', key, 0, windowStart)\n" +
-                "\n" +
-                "-- 获取当前窗口内的请求数\n" +
-                "local current = redis.call('zcard', key)\n" +
-                "\n" +
-                "if current < limit then\n" +
-                "    -- 添加当前请求\n" +
-                "    redis.call('zadd', key, now, now)\n" +
-                "    -- 设置过期时间\n" +
-                "    redis.call('expire', key, windowSize)\n" +
-                "    return 1\n" +
-                "else\n" +
-                "    return 0\n" +
-                "end";
-
-            RedisScript<Long> script = RedisScript.of(luaScript, Long.class);
+            // 执行 Lua 脚本，保证原子性
             Long result = stringRedisTemplate.execute(
-                script,
+                slidingWindowScript,
                 Collections.singletonList(redisKey),
                 String.valueOf(now),
                 String.valueOf(windowStart),
@@ -98,7 +83,8 @@ public class RedisRateLimiter {
     /**
      * 令牌桶限流算法
      * 
-     * 使用 Redis String 存储令牌数量
+     * 使用 Redis Hash 存储令牌数量和时间戳
+     * Lua 脚本：resources/lua/token_bucket_rate_limit.lua
      * 
      * @param key          限流key
      * @param limit        桶容量（最大令牌数）
@@ -110,39 +96,9 @@ public class RedisRateLimiter {
         long now = Instant.now().toEpochMilli();
 
         try {
-            String luaScript =
-                "local key = KEYS[1]\n" +
-                "local now = tonumber(ARGV[1])\n" +
-                "local limit = tonumber(ARGV[2])\n" +
-                "local rate = tonumber(ARGV[3])\n" +
-                "\n" +
-                "local info = redis.call('hmget', key, 'tokens', 'timestamp')\n" +
-                "local tokens = tonumber(info[1])\n" +
-                "local timestamp = tonumber(info[2])\n" +
-                "\n" +
-                "if tokens == nil then\n" +
-                "    tokens = limit\n" +
-                "    timestamp = now\n" +
-                "else\n" +
-                "    -- 计算新增的令牌数\n" +
-                "    local deltaTime = math.max(0, now - timestamp)\n" +
-                "    local newTokens = math.floor(deltaTime * rate / 1000)\n" +
-                "    tokens = math.min(limit, tokens + newTokens)\n" +
-                "    timestamp = now\n" +
-                "end\n" +
-                "\n" +
-                "if tokens >= 1 then\n" +
-                "    tokens = tokens - 1\n" +
-                "    redis.call('hmset', key, 'tokens', tokens, 'timestamp', timestamp)\n" +
-                "    redis.call('expire', key, 60)\n" +
-                "    return 1\n" +
-                "else\n" +
-                "    return 0\n" +
-                "end";
-
-            RedisScript<Long> script = RedisScript.of(luaScript, Long.class);
+            // 执行 Lua 脚本，保证原子性
             Long result = stringRedisTemplate.execute(
-                script,
+                tokenBucketScript,
                 Collections.singletonList(redisKey),
                 String.valueOf(now),
                 String.valueOf(limit),

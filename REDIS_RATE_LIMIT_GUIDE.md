@@ -57,6 +57,8 @@
 
 **Lua 脚本实现**：
 
+脚本位置：`src/main/resources/lua/sliding_window_rate_limit.lua`
+
 ```lua
 -- 移除窗口外的数据
 redis.call('zremrangebyscore', key, 0, windowStart)
@@ -71,6 +73,22 @@ if current < limit then
 else
     return 0
 end
+```
+
+**Java 配置**：
+
+```java
+@Configuration
+public class RedisLuaScriptConfig {
+    @Bean(name = "slidingWindowScript")
+    public DefaultRedisScript<Long> slidingWindowScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setScriptSource(new ResourceScriptSource(
+                new ClassPathResource("lua/sliding_window_rate_limit.lua")));
+        script.setResultType(Long.class);
+        return script;
+    }
+}
 ```
 
 **优点**：
@@ -108,6 +126,8 @@ t=1s:  桶=[5个] 生成新令牌
 
 **Redis 实现**：
 
+脚本位置：`src/main/resources/lua/token_bucket_rate_limit.lua`
+
 ```lua
 -- 计算新增的令牌数
 local deltaTime = now - timestamp
@@ -121,6 +141,20 @@ if tokens >= 1 then
 else
     return 0
 end
+```
+
+**Java 配置**：
+
+```java
+@Resource(name = "slidingWindowScript")
+private RedisScript<Long> slidingWindowScript;
+
+// 使用脚本
+Long result = stringRedisTemplate.execute(
+    slidingWindowScript,
+    Collections.singletonList(redisKey),
+    now, windowStart, limit, windowSize
+);
 ```
 
 **优点**：

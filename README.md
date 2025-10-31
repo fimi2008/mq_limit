@@ -6,8 +6,11 @@
 
 - ✅ Spring Boot 2.7.14
 - ✅ RocketMQ Spring Boot Starter 2.2.3
+- ✅ Redis 分布式限流（支持滑动窗口、令牌桶、固定窗口）
+- ✅ Lua 脚本分离配置，易于维护
 - ✅ 多种消息消费模式演示
 - ✅ 生产者和消费者完整实现
+- ✅ 熔断降级机制
 - ✅ RESTful API 接口测试
 - ✅ 详细的日志输出
 
@@ -18,21 +21,41 @@ mq_limit_demo/
 ├── src/
 │   └── main/
 │       ├── java/com/example/mqlimitdemo/
-│       │   ├── MqLimitDemoApplication.java      # 启动类
+│       │   ├── MqLimitDemoApplication.java           # 启动类
+│       │   ├── config/
+│       │   │   ├── RateLimiterConfig.java            # 本地限流器配置
+│       │   │   ├── RedisConfig.java                  # Redis配置
+│       │   │   └── RedisLuaScriptConfig.java         # Lua脚本配置 🆕
+│       │   ├── limiter/
+│       │   │   └── RedisRateLimiter.java             # Redis分布式限流器
+│       │   ├── service/
+│       │   │   └── ThirdPartyApiService.java         # 模拟第三方API
 │       │   ├── controller/
-│       │   │   └── MessageController.java       # 消息发送接口
+│       │   │   ├── MessageController.java            # 消息发送接口
+│       │   │   ├── RateLimitTestController.java      # 本地限流测试
+│       │   │   └── RedisRateLimitController.java     # Redis限流测试
 │       │   ├── producer/
-│       │   │   └── MessageProducer.java         # 消息生产者
+│       │   │   └── MessageProducer.java              # 消息生产者
 │       │   ├── consumer/
-│       │   │   ├── OrderMessageConsumer.java    # 订单消息消费者
-│       │   │   ├── SimpleMessageConsumer.java   # 简单消息消费者
-│       │   │   └── TagFilterConsumer.java       # Tag过滤消费者
+│       │   │   ├── OrderMessageConsumer.java         # 订单消息消费者
+│       │   │   ├── SimpleMessageConsumer.java        # 简单消息消费者
+│       │   │   ├── TagFilterConsumer.java            # Tag过滤消费者
+│       │   │   ├── RateLimitedMessageConsumer.java   # 本地限流消费者
+│       │   │   ├── AdvancedRateLimitConsumer.java    # 高级限流消费者
+│       │   │   └── RedisRateLimitConsumer.java       # Redis限流消费者
 │       │   └── domain/
-│       │       └── OrderMessage.java            # 订单消息实体
+│       │       └── OrderMessage.java                 # 订单消息实体
 │       └── resources/
-│           └── application.yml                  # 配置文件
-├── pom.xml                                      # Maven依赖
-└── README.md                                    # 项目说明
+│           ├── lua/                                  # Lua脚本目录 🆕
+│           │   ├── sliding_window_rate_limit.lua     # 滑动窗口脚本
+│           │   └── token_bucket_rate_limit.lua       # 令牌桶脚本
+│           └── application.yml                       # 配置文件
+├── docs/
+│   └── api.http                                      # HTTP接口测试 🆕
+├── pom.xml                                           # Maven依赖
+├── README.md                                         # 项目说明
+├── RATE_LIMIT_GUIDE.md                               # 本地限流指南
+└── REDIS_RATE_LIMIT_GUIDE.md                         # Redis限流指南
 ```
 
 ## 前置条件

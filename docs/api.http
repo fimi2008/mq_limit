@@ -1,0 +1,79 @@
+### 1. 发送简单消息
+GET http://localhost:9000/message/send/simple?message=Hello
+Accept: application/json
+
+### 2. 发送订单消息
+POST http://localhost:9000/message/send/order
+Accept: application/json
+
+### 3. 发送带Tag的消息
+GET http://localhost:9000/message/send/tag?tag=tagA&message=TestMessage
+Accept: application/json
+
+### 4. 批量发送消息
+GET http://localhost:9000/message/send/batch?count=10
+Accept: application/json
+
+###############################################
+### 本地限流测试
+###############################################
+
+### 5. 测试基础限流（单线程 + RateLimiter）
+GET http://localhost:9000/rate-limit/test/basic?count=100
+Accept: application/json
+
+### 6. 测试高级限流（多线程 + 熔断降级）
+GET http://localhost:9000/rate-limit/test/advanced?count=30
+Accept: application/json
+
+### 7. 直接调用第三方接口测试
+GET http://localhost:9000/rate-limit/test/direct?count=10
+Accept: application/json
+
+### 8. 并发测试
+GET http://localhost:9000/rate-limit/test/concurrent?count=50
+Accept: application/json
+
+### 9. 查看第三方接口状态
+GET http://localhost:9000/rate-limit/status
+Accept: application/json
+
+###############################################
+### Redis 分布式限流测试
+###############################################
+
+### 10. 检查 Redis 连接状态
+GET http://localhost:9000/redis-rate-limit/health
+Accept: application/json
+
+### 11. 测试滑动窗口限流（推荐）
+GET http://localhost:9000/redis-rate-limit/test/sliding-window?count=20
+Accept: application/json
+
+### 12. 测试令牌桶限流
+GET http://localhost:9000/redis-rate-limit/test/token-bucket?count=30
+Accept: application/json
+
+### 13. 测试固定窗口限流
+GET http://localhost:9000/redis-rate-limit/test/fixed-window?count=15
+Accept: application/json
+
+### 14. 直接测试滑动窗口算法
+GET http://localhost:9000/redis-rate-limit/test/direct?algorithm=sliding&count=10
+Accept: application/json
+
+### 15. 直接测试令牌桶算法
+GET http://localhost:9000/redis-rate-limit/test/direct?algorithm=token&count=10
+Accept: application/json
+
+### 16. 直接测试固定窗口算法
+GET http://localhost:9000/redis-rate-limit/test/direct?algorithm=fixed&count=10
+Accept: application/json
+
+### 17. 查看限流统计信息
+GET http://localhost:9000/redis-rate-limit/stats?key=third_party_api
+Accept: application/json
+
+### 18. 重置限流计数
+POST http://localhost:9000/redis-rate-limit/reset?key=third_party_api
+Accept: application/json
