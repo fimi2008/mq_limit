@@ -42,3 +42,7 @@ spring-boot-devtools.properties
 *.swp
 *~
 
+# Heap dumps (OOM test)
+*.hprof
+heap_dump.hprof
+

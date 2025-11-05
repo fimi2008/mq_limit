@@ -1,0 +1,126 @@
+### OutOfMemoryError 测试 API 集合
+### 使用 IDEA HTTP Client 或 VS Code REST Client 插件测试
+
+@host = http://localhost:9000
+
+###############################################
+### 1. 获取使用帮助
+###############################################
+GET {{host}}/oom/help
+Accept: application/json
+
+###############################################
+### 2. 启动内存泄漏模式（每条消息累积 100KB）
+###############################################
+POST {{host}}/oom/start?sizeKB=100
+Content-Type: application/json
+
+###############################################
+### 3. 启动内存泄漏模式（快速模式：500KB）
+###############################################
+# POST {{host}}/oom/start?sizeKB=500
+# Content-Type: application/json
+
+###############################################
+### 4. 查看内存统计信息
+###############################################
+GET {{host}}/oom/stats
+Accept: application/json
+
+###############################################
+### 5. 发送单条 OOM 测试消息
+###############################################
+POST {{host}}/oom/send?message=Test Message
+Content-Type: application/json
+
+###############################################
+### 6. 批量发送 50 条消息（缓慢模式）
+###############################################
+POST {{host}}/oom/send-batch?count=50
+Content-Type: application/json
+
+###############################################
+### 7. 批量发送 100 条消息（中速模式）
+###############################################
+POST {{host}}/oom/send-batch?count=100
+Content-Type: application/json
+
+###############################################
+### 8. 批量发送 200 条消息（快速模式）
+###############################################
+# POST {{host}}/oom/send-batch?count=200
+# Content-Type: application/json
+
+###############################################
+### 9. 停止内存泄漏模式
+###############################################
+POST {{host}}/oom/stop
+Content-Type: application/json
+
+###############################################
+### 10. 清理所有累积的内存
+###############################################
+POST {{host}}/oom/clear
+Content-Type: application/json
+
+###############################################
+### 典型测试流程（缓慢 OOM 场景）
+###############################################
+
+### Step 1: 查看初始内存状态
+GET {{host}}/oom/stats
+
+### Step 2: 启动内存泄漏模式（100KB/消息）
+POST {{host}}/oom/start?sizeKB=100
+
+### Step 3: 发送第一批消息（50条）
+POST {{host}}/oom/send-batch?count=50
+
+### Step 4: 检查内存状态
+GET {{host}}/oom/stats
+
+### Step 5: 发送第二批消息（50条）
+POST {{host}}/oom/send-batch?count=50
+
+### Step 6: 检查内存状态
+GET {{host}}/oom/stats
+
+### Step 7: 发送第三批消息（50条）
+POST {{host}}/oom/send-batch?count=50
+
+### Step 8: 检查内存状态（应该看到明显增长）
+GET {{host}}/oom/stats
+
+### Step 9: 继续发送消息直到 OOM...
+POST {{host}}/oom/send-batch?count=100
+
+### Step 10: 再次检查（如果还没 OOM）
+GET {{host}}/oom/stats
+
+###############################################
+### 快速测试流程（快速 OOM 场景）
+### ⚠️ 确保 JVM 配置：-Xmx128m -Xms64m
+###############################################
+
+### 1. 启动快速泄漏模式（500KB/消息）
+# POST {{host}}/oom/start?sizeKB=500
+
+### 2. 批量发送大量消息
+# POST {{host}}/oom/send-batch?count=200
+
+### 3. 观察内存快速增长
+# GET {{host}}/oom/stats
+
+###############################################
+### 清理和恢复
+###############################################
+
+### 停止泄漏
+POST {{host}}/oom/stop
+
+### 清理内存
+POST {{host}}/oom/clear
+
+### 验证清理结果
+GET {{host}}/oom/stats
+

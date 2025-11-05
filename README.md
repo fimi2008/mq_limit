@@ -13,6 +13,7 @@
 - ✅ 熔断降级机制
 - ✅ RESTful API 接口测试
 - ✅ 详细的日志输出
+- 🆕 OutOfMemoryError 场景模拟（缓慢内存泄漏演示）
 
 ## 项目结构
 
@@ -337,6 +338,17 @@ curl -X POST "http://localhost:9000/redis-rate-limit/reset?key=third_party_api"
   - ✅ 多个消费者实例共享限流配置
   - ✅ 适合分布式/集群环境
 
+### MemoryLeakConsumer（内存泄漏演示消费者）🆕
+
+- **Topic**: `oom-test-topic`
+- **Consumer Group**: `oom-consumer-group`
+- **功能**: 演示缓慢出现的 OutOfMemoryError: Java heap space 异常
+- **特点**: 
+  - 每条消息在内存中累积数据（约100KB）
+  - 数据存储在静态集合中，不会被GC回收
+  - 内存缓慢增长，最终触发 OOM
+  - ⚠️ 仅用于测试环境！
+
 ## 消费模式说明
 
 ### 1. 消息模型（MessageModel）
@@ -565,6 +577,7 @@ docker exec -it redis redis-cli ping
 详细说明请查看：
 - [RATE_LIMIT_GUIDE.md](RATE_LIMIT_GUIDE.md) - 本地限流方案
 - [REDIS_RATE_LIMIT_GUIDE.md](REDIS_RATE_LIMIT_GUIDE.md) - Redis分布式限流方案 🔥
+- [OOM_TEST_GUIDE.md](OOM_TEST_GUIDE.md) - OutOfMemoryError 测试指南 🆕
 
 ### 测试效果对比
 
@@ -585,4 +598,76 @@ docker exec -it redis redis-cli ping
 | 实际限流 | 15次/秒 ❌ | 5次/秒 ✅ |
 | 精度 | 低（各实例独立） | 高（全局共享） |
 | 适用场景 | 单机 | 分布式/集群 |
+
+## OutOfMemoryError 场景模拟 🆕
+
+### 快速开始
+
+本项目提供了完整的 `OutOfMemoryError: Java heap space` 异常模拟场景，用于学习和演示内存泄漏问题。
+
+#### 1. 使用启动脚本（推荐）
+
+```bash
+# Windows
+start-oom-test.bat
+
+# Linux/Mac
+chmod +x start-oom-test.sh
+./start-oom-test.sh
+```
+
+这会以限制内存模式启动应用（-Xmx256m -Xms128m），便于快速触发 OOM。
+
+#### 2. 测试步骤
+
+```bash
+# 第1步：启动内存泄漏模式（每条消息累积100KB）
+curl -X POST "http://localhost:8080/oom/start?sizeKB=100"
+
+# 第2步：批量发送测试消息
+curl -X POST "http://localhost:8080/oom/send-batch?count=100"
+
+# 第3步：查看内存统计（观察内存增长）
+curl -X GET "http://localhost:8080/oom/stats"
+
+# 第4步：重复步骤2-3，直到触发 OOM
+# 当内存使用率接近100%时，会抛出 OutOfMemoryError
+
+# 第5步：清理内存（可选）
+curl -X POST "http://localhost:8080/oom/clear"
+```
+
+#### 3. API 接口
+
+| 接口 | 说明 |
+|------|------|
+| `POST /oom/start?sizeKB=100` | 启动内存泄漏模式 |
+| `POST /oom/stop` | 停止内存泄漏模式 |
+| `POST /oom/clear` | 清理累积的内存 |
+| `GET /oom/stats` | 查看内存统计信息 |
+| `POST /oom/send` | 发送单条测试消息 |
+| `POST /oom/send-batch?count=50` | 批量发送测试消息 |
+| `GET /oom/help` | 获取使用帮助 |
+
+#### 4. 监控工具
+
+- **日志监控**：查看控制台输出的内存统计信息
+- **JConsole**：运行 `jconsole` 连接到应用进程
+- **VisualVM**：运行 `jvisualvm` 查看堆内存使用情况
+- **堆转储分析**：OOM 时自动生成 `heap_dump.hprof` 文件
+
+#### 5. 预期效果
+
+```
+📊 内存统计 - 消息数: 100, 已用: 180.50 MB / 256.00 MB, 使用率: 70.51%
+📊 内存统计 - 消息数: 500, 已用: 215.30 MB / 256.00 MB, 使用率: 84.10%
+⚠️⚠️⚠️ 警告：内存使用率已超过80%！即将发生 OOM！
+📊 内存统计 - 消息数: 1200, 已用: 245.30 MB / 256.00 MB, 使用率: 95.82%
+💥💥💥 OutOfMemoryError 发生了！消息数: 1250
+Exception in thread "ConsumeMessageThread_oom-consumer-group_1" java.lang.OutOfMemoryError: Java heap space
+```
+
+**详细说明请查看**: [OOM_TEST_GUIDE.md](OOM_TEST_GUIDE.md)
+
+⚠️ **警告**: 此功能会导致真实的内存溢出，仅在测试环境使用！
 
